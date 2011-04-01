@@ -1,4 +1,4 @@
-h1. ThingSpeak
+h1. ThingSpeak (with rate limits and memcached support)
 
 "ThingSpeak":http://www.thingspeak.com is an open source “Internet of Things” application and API to store and retrieve data from things using HTTP over the Internet or via a Local Area Network. With ThingSpeak, you can create sensor logging applications, location tracking applications, and a social network of things with status updates.
 
@@ -20,9 +20,34 @@ h3. Configuration
 2. Create the database: rake db:create
 3. Create the database tables: rake db:schema:load
 
+h3. Memcached Installation
+
+cd ~
+mkdir sources
+cd sources
+
+wget http://www.monkey.org/~provos/libevent-2.0.10-stable.tar.gz
+wget http://memcached.googlecode.com/files/memcached-1.4.5.tar.gz
+
+tar xzvf libevent-2.0.10-stable.tar.gz
+cd libevent-2.0.10-stable
+sudo ./configure --prefix=/usr
+sudo make
+sudo make install
+
+cd ..
+tar xzvf memcached-1.4.5.tar.gz
+cd memcached-1.4.5
+sudo ./configure --with-libevent=/usr/lib
+sudo make
+sudo make install
+
+memcached -I5m -d
+
 h3. Run The Application
 
-1. Start the server: rails server
+1. Change your directory to thingspeak/
+2. Start the server: rails server
 
 Your application will now be running at http://localhost:3000/ 
 
@@ -31,6 +56,10 @@ h2. Changing Application Text
 Make changes to config/locales/en.yml
 To avoid errors, please ensure your lines start with spaces, not tabs.
 Set your application name using the 'application_name' key.
+
+h2. (Optional) Rate Limit Channel Updates
+
+Change the "15.seconds" to whatever you like in line 100 of app/controllers/channels_controller.rb
 
 h2. (Optional) HTTP GET Support
 
