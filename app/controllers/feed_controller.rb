@@ -7,48 +7,79 @@ class FeedController < ApplicationController
 		api_key = ApiKey.find_by_api_key(get_userkey)
 		@success = channel_permission?(channel, api_key)
 
+		# set limits
+		limit = (params[:format] == 'csv') ? 1000000 : 8000
+		limit = params[:results].to_i if (params[:results] and params[:results].to_i < 8000)
+
+		# only cache after first 100 entries
+		cache_channel = (channel.last_entry_id and channel.last_entry_id > 100 and limit > 100)
+
 		# check for access
 		if @success
 
-			# create options hash
-			channel_options = { :only => channel_select_data(channel) }
-			select_options = feed_select_data(channel)
+			if cache_channel
+				# check cache for stored value
+				feed_output_cache_key = cache_key('feed_output')
+				channel_output_cache_key = cache_key('channel_output')
+				@feed_output = Rails.cache.read(feed_output_cache_key)
+				@channel_output = Rails.cache.read(channel_output_cache_key)
+			end
 
-			# get feed based on conditions
-			feeds = Feed.find(
-				:all,
-				:conditions => { :channel_id => channel.id, :created_at => get_date_range(params) },
-				:select => select_options,
-				:order => 'created_at desc'
-			)
+			# if cache miss, get data
+			if @feed_output.nil? or @channel_output.nil?
+	
+				# create options hash
+				channel_options = { :only => channel_select_data(channel) }
+				select_options = feed_select_data(channel)
+	
 
-			# if a feed has data
-			if !feeds.empty?
-				# convert to timescales if necessary
-				if timeparam_valid?(params[:timescale])
-					feeds = feeds_into_timescales(feeds)
-				# convert to sums if necessary
-				elsif timeparam_valid?(params[:sum])
-					feeds = feeds_into_sums(feeds)
-				# convert to averages if necessary
-				elsif timeparam_valid?(params[:average])
-					feeds = feeds_into_averages(feeds) 
-				# convert to medians if necessary
-				elsif timeparam_valid?(params[:median])
-					feeds = feeds_into_medians(feeds)
+				# get feed based on conditions
+				feeds = Feed.find(
+					:all,
+					:conditions => { :channel_id => channel.id, :created_at => get_date_range(params) },
+					:select => select_options,
+					:order => 'created_at desc',
+					:limit => limit
+				)
+		
+				# sort properly
+				feeds.reverse!
+
+				# if a feed has data
+				if !feeds.empty?
+					# convert to timescales if necessary
+					if timeparam_valid?(params[:timescale])
+						feeds = feeds_into_timescales(feeds)
+					# convert to sums if necessary
+					elsif timeparam_valid?(params[:sum])
+						feeds = feeds_into_sums(feeds)
+					# convert to averages if necessary
+					elsif timeparam_valid?(params[:average])
+						feeds = feeds_into_averages(feeds) 
+					# convert to medians if necessary
+					elsif timeparam_valid?(params[:median])
+						feeds = feeds_into_medians(feeds)
+					end
 				end
-			end
+	
+				# set output correctly
+				if params[:format] == 'xml'
+					@channel_output = channel.to_xml(channel_options).sub('</channel>', '').strip
+					@feed_output = feeds.to_xml(:skip_instruct => true).gsub(/\n/, "\n  ").chop.chop
+				elsif params[:format] == 'csv'
+					@feed_output = feeds
+				else
+					@channel_output = channel.to_json(channel_options).chop
+					@feed_output = feeds.to_json
+				end
 
-			# set output correctly
-			if params[:format] == 'xml'
-				@channel_output = channel.to_xml(channel_options).sub('</channel>', '').strip
-				@feed_output = feeds.to_xml(:skip_instruct => true).gsub(/\n/, "\n  ").chop.chop
-			elsif params[:format] == 'csv'
-				@feed_output = feeds
-			else
-				@channel_output = channel.to_json(channel_options).chop
-				@feed_output = feeds.to_json
-			end
+				if cache_channel
+					# save to cache
+					Rails.cache.write(feed_output_cache_key, @feed_output, :expires_in => 5.minutes)
+					Rails.cache.write(channel_output_cache_key, @channel_output, :expires_in => 5.minutes)
+				end
+
+			end # end if feeds not empty
 
 		# else no access, set error code
 		else

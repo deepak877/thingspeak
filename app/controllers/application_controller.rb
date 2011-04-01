@@ -84,6 +84,19 @@ class ApplicationController < ActionController::Base
 				return value
 		end
 
+		# generates a hash key unique to the user and url
+		def cache_key(type)
+			cache_key = request.host + request.path
+			user_id = current_user ? current_user.id : '0'
+	
+			params.each do |key, value|
+				# add the parameter if appropriate
+				cache_key += "&#{key}=#{value}" if key != 'callback' && key != 'controller' && key != 'action' && key != 'format'
+			end
+	
+			return "#{user_id}-#{type}-#{cache_key}"
+		end
+
 		# gets the same data for showing or editing
 		def get_channel_data
 			@channel = Channel.find(params[:channel_id]) if params[:channel_id]

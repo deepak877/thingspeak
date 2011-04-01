@@ -96,6 +96,9 @@ class ChannelsController < ApplicationController
 		if (api_key && api_key.write_flag)
 			channel = Channel.find(api_key.channel_id)
 
+			# rate limit posts
+			render :text => '0' and return if (Time.now < channel.updated_at + 15.seconds)
+
 			# update entry_id for channel and feed
 			entry_id = channel.last_entry_id.nil? ? 1 : channel.last_entry_id + 1
 			channel.last_entry_id = entry_id
