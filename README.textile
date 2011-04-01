@@ -1,4 +1,4 @@
-h1. ThingSpeak (with rate limits and memcached)
+h1. ThingSpeak (with rate limits and memcached support)
 
 "ThingSpeak":http://www.thingspeak.com is an open source “Internet of Things” application and API to store and retrieve data from things using HTTP over the Internet or via a Local Area Network. With ThingSpeak, you can create sensor logging applications, location tracking applications, and a social network of things with status updates.
 
@@ -21,6 +21,7 @@ h3. Configuration
 3. Create the database tables: rake db:schema:load
 
 h3. Memcached Installation
+
 cd ~
 mkdir sources
 cd sources
