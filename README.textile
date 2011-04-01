@@ -46,7 +46,7 @@ memcached -I5m -d
 
 h3. Run The Application
 
-1. Change to your /thingspeak/ directory
+1. Change your directory to thingspeak/
 2. Start the server: rails server
 
 Your application will now be running at http://localhost:3000/ 
